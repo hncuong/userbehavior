@@ -14,9 +14,14 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql._
 
 object GroupToMapGuids extends UserDefinedAggregateFunction{
+  val encodeRatio = MuachungPathParse.idEditedMaxRange / 1000L
+  //milis = 1466687415000 + id = 138543 = > encodeIdMilis = 14666874150138543 if idMaxRange = 10m
+  def encodeIdMilis(id : Long, milis : Long): Long={
+    return id + encodeRatio * milis
+  }
   // Schema you get as an input
   def inputSchema = new StructType().
-    add("idMilis", LongType)
+    add("idMilis", LongType).add("milis", LongType)
 
 
   // Schema of the row which is used for aggregation
@@ -35,7 +40,8 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
   def update(buffer: MutableAggregationBuffer, input: Row) = {
     if (!input.isNullAt(0)){
       val longList = new ArrayList[Long](buffer.getList(0))
-      longList.add(input.getLong(0))
+      val encodedIdMilis : Long = encodeIdMilis(input.getLong(0), input.getLong(1))
+      longList.add(encodedIdMilis)
       buffer.update(0, longList)
     }
   }
@@ -56,6 +62,8 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
   // Called on exit to get return value
   // def evaluate(buffer: Row) = buffer.getMap(0)
   def evaluate(buffer: Row): ArrayList[Long] = {
+
+
     val idMilisList = new ArrayList[Long](buffer.getList(0))
     //Collections.sort(list)
     Collections.sort(idMilisList, new Comparator[Long]() {
@@ -66,7 +74,7 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
     var idList = new util.ArrayList[Long]()
     val iter = idMilisList.iterator()
     while(iter.hasNext() ) {
-      val id: Long = iter.next() % 1000000L
+      val id: Long = iter.next() % MuachungPathParse.idEditedMaxRange
       idList.add(id)
     }
     return idList
