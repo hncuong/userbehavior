@@ -104,16 +104,10 @@ object MuachungPathParse {
       }
     }
 
-    //var viewId
-    /*val iter = viewList.
-    while (iter.hasNext){
-      var editedId = iter.next()
-      if (editedId > idPaidMinRange){
-        editedId -= idPaidMinRange
-        paidList.add(editedId)
-      }
-    }*/
-    val re = paidList.toArray
-    return re
+    return paidList.toArray
+  }
+  def getLabelPaidOrNot(paidList: WrappedArray[Long] ) : Boolean={
+    if (paidList.length > 0) return true
+    return false
   }
 }

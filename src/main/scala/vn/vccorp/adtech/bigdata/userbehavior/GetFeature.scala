@@ -7,7 +7,7 @@ import utilities.SystemInfo
 import org.apache.spark.sql.{DataFrame, SQLContext, UserDefinedFunction}
 import org.apache.spark.sql.functions.{avg, count, udf}
 import utilities.TimeMeasurent
-import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse.{getEditedIdFromPath, getPaidListFromViewList}
+import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse.{getEditedIdFromPath, getPaidListFromViewList, getLabelPaidOrNot}
 
 import scala.collection.mutable.WrappedArray
 /**
@@ -98,6 +98,9 @@ object GetFeature {
     val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Long]))
     val guidViewPaidList = guidViewList.withColumn("paidList", getPaidList($"idList"))
 
-    return guidViewPaidList
+    val getLabelOfPaid = udf(getLabelPaidOrNot(_ : WrappedArray[Long]))
+    val guidViewPaidLabel = guidViewPaidList.withColumn("labelOfPaid", getLabelOfPaid($"paidList"))
+
+    return guidViewPaidLabel
   }
 }
