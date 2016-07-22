@@ -22,9 +22,11 @@ object GetFeature {
     println("Start page view analysis!!")
 
     val guidViewPaidList = getPageViewUserFeature(sc, sqlContext, date)
-    guidViewPaidList.show()
-    guidViewPaidList.filter($"labelOfPaid" === true).show()
+    guidViewPaidList.show(false)
+    guidViewPaidList.filter($"labelOfPaid" === true).show(false)
     guidViewPaidList.printSchema()
+
+
 
     timeMeasurent.getDistanceAndRestart()
     println("Start time on site analysis!!")
@@ -59,9 +61,6 @@ object GetFeature {
  |-- utm_medium: string (nullable = true)
  |-- milis: long (nullable = true)
     * */
-
-
-
 
 
     timeMeasurent.getDistanceAndRestart()
