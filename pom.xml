@@ -4,7 +4,7 @@
 
 	<groupId>vn.vccorp.adtech.bigdata</groupId>
 	<artifactId>userbehavior</artifactId>
-	<version>1.1-6</version>
+	<version>1.1-15</version>
 	<packaging>jar</packaging>
 
 	<properties>

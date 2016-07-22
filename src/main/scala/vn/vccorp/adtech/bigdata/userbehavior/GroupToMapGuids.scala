@@ -14,8 +14,8 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql._
 
 object GroupToMapGuids extends UserDefinedAggregateFunction{
-  val encodeRatio = MuachungPathParse.idEditedMaxRange / 1000L
-  //milis = 1466687415000 + id = 138543 = > encodeIdMilis = 14666874150138543 if idMaxRange = 10m
+  val encodeRatio = MuachungPathParse.idMaxRange / 1000L
+  //milis = 1466687415000 + id = 10138543 = > encodeIdMilis = 146668741510138543 if idMaxRange = 100m
   def encodeIdMilis(id : Long, milis : Long): Long={
     return id + encodeRatio * milis
   }
@@ -74,7 +74,7 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
     var idList = new util.ArrayList[Long]()
     val iter = idMilisList.iterator()
     while(iter.hasNext() ) {
-      val id: Long = iter.next() % MuachungPathParse.idEditedMaxRange
+      val id: Long = iter.next() % MuachungPathParse.idMaxRange
       idList.add(id)
     }
     return idList

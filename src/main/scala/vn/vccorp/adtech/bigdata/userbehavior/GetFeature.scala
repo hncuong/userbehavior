@@ -1,13 +1,11 @@
 package vn.vccorp.adtech.bigdata.userbehavior
 
-import java.util.ArrayList
-
 import org.apache.spark.SparkContext
 import utilities.SystemInfo
 import org.apache.spark.sql.{DataFrame, SQLContext, UserDefinedFunction}
 import org.apache.spark.sql.functions.{avg, count, udf}
 import utilities.TimeMeasurent
-import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse.{getEditedIdFromPath, getPaidListFromViewList, getLabelPaidOrNot}
+import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse.{getEditedIdFromPath, getPaidListFromViewList, getLabelPaidOrNot, getCategoryList}
 
 import scala.collection.mutable.WrappedArray
 /**
@@ -21,6 +19,14 @@ object GetFeature {
   def getUserFeatures(sc: SparkContext, sqlContext: SQLContext, date:String): Unit ={
     import sqlContext.implicits._
     val timeMeasurent = new TimeMeasurent()
+    println("Start page view analysis!!")
+
+    val guidViewPaidList = getPageViewUserFeature(sc, sqlContext, date)
+    guidViewPaidList.show()
+    guidViewPaidList.filter($"labelOfPaid" === true).show()
+    guidViewPaidList.printSchema()
+
+    timeMeasurent.getDistanceAndRestart()
     println("Start time on site analysis!!")
 
     //time on site : muachung.vn -> (guid, count, avg(tos), avg(tor))
@@ -56,12 +62,7 @@ object GetFeature {
 
 
 
-    timeMeasurent.getDistanceAndRestart()
-    println("Start page view analysis!!")
 
-    val guidViewList = getPageViewUserFeature(sc, sqlContext, date)
-    guidViewList.show(false)
-    guidViewList.printSchema()
 
     timeMeasurent.getDistanceAndRestart()
     println("Paiduser analysis!!")
@@ -86,21 +87,26 @@ object GetFeature {
     import sqlContext.implicits._
     println("Start pv analysis!! : " + date)
     val pageViewPath = systemInfo.getString("pageview_path").replace("yyyy-MM-dd", date)
-    val pageView = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
+    var pageView = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
       .select("guid", "path", "milis")
 
     //sqlContext.udf.register("getItemIdFromPath", getIdFromPath(_: String))
     val getItemIdFromPath = udf(getEditedIdFromPath(_: String))
-    val pv = pageView.withColumn("itemId", getItemIdFromPath(pageView("path")) )
+    pageView = pageView.withColumn("itemId", getItemIdFromPath(pageView("path")) )
 
-    val guidViewList = pv.groupBy("guid").agg(GroupToMapGuids($"itemId", $"milis").as("idList"))
+    //test
+    //pv.filter($"itemId" > MuachungPathParse.idPaidMinRange).show()
+
+    pageView = pageView.groupBy("guid").agg(count("itemId").as("countView"),GroupToMapGuids($"itemId", $"milis").as("idList"))
 
     val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Long]))
-    val guidViewPaidList = guidViewList.withColumn("paidList", getPaidList($"idList"))
+    pageView = pageView.withColumn("paidList", getPaidList($"idList"))
 
     val getLabelOfPaid = udf(getLabelPaidOrNot(_ : WrappedArray[Long]))
-    val guidViewPaidLabel = guidViewPaidList.withColumn("labelOfPaid", getLabelOfPaid($"paidList"))
+    val getCategoryLists = udf(getCategoryList(_ : WrappedArray[Long]))
+    pageView = pageView.withColumn("labelOfPaid", getLabelOfPaid($"paidList"))
+      .withColumn("categoryList", getCategoryLists($"idList"))
 
-    return guidViewPaidLabel
+    return pageView
   }
 }

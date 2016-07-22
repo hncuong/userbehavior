@@ -1,8 +1,9 @@
 package vn.vccorp.adtech.bigdata.userbehavior
+
 import java.util
 
 import utilities.NumericString.isNumeric
-import java.util.ArrayList
+
 import scala.collection.mutable.WrappedArray
 
 //import scala.List
@@ -31,9 +32,11 @@ object MuachungPathParse {
     "thoi-trang-nu"/*3*/, "thoi-trang-nam"/*4*/, "phu-kien-my-pham"/*5*/, "dien-tu-cong-nghe"/*6*/, "thuc-pham"/*7*/
     , "me-be"/*8*/, "dao-tao-giai-tri"/*9*/)
 
-  final val idMaxRange = 1000000L
-  final val idPaidMinRange = 10000000L
-  final val idEditedMaxRange = 100000000L
+
+  final val itemIdMinRange = 10000L // < realitemId
+  final val itemIdMaxRange = 1000000L // > realitemId
+  final val idPaidMinRange = 10000000L // > editedItemId
+  final val idMaxRange = 100000000L // <
 
   def  getEditedIdFromPath(path: String): Long = {
 
@@ -50,8 +53,8 @@ object MuachungPathParse {
           //  /am-thuc-nha-hang/thoa-thich-an-buffet-cao-cap-ngam-ho-guom-138543.html
           if (isNumeric(itemPath(itemPath.length - 2))){
             val itemId = itemPath(itemPath.length - 2).toLong
-            if (itemId < idMaxRange ){
-              return itemId + categoryIndex * idMaxRange // 131493
+            if (itemId < itemIdMaxRange ){
+              return itemId + categoryIndex * itemIdMaxRange // 131493
             }
           }
         }
@@ -67,7 +70,7 @@ object MuachungPathParse {
         if (arrayRealPath.length >=4) {
           val categoryName = arrayRealPath(3).split("[.]")(0)
           val categoryIndex = getCategoryIndex(categoryName)
-          if (categoryIndex >= 0) return (categoryIndex + 1) * idMaxRange
+          if (categoryIndex >= 0) return (categoryIndex + 1) * itemIdMaxRange
         }
       } //category
       if (arrayRealPath(1) == thanhtoan) {
@@ -93,21 +96,52 @@ object MuachungPathParse {
     }
     return -1
   }
-  def getPaidListFromViewList(viewList : WrappedArray[Long] ): Array[Long]= {
-    val paidList : List[Long]= Nil
+  def getPaidListFromViewList(viewList : WrappedArray[Long] ):Array[Long]= {
+    var paidList : List[Long]= Nil
+    var editedId = 0L
+    //val seq : Seq[Long] = viewList
+    for (i <- viewList.indices){
+      editedId = viewList(i)
+      if (editedId > idPaidMinRange){
+        editedId -= idPaidMinRange
+        paidList = paidList :+ editedId
+      }
+    }
+    return paidList.toArray
+  }
+  /* AIL : return type for Array in Row: Schema for type java.util.ArrayList[Long] is not supported
+  should use Array[Long], cause ArrayType is represented in a Row as a scala.collection.mutable.WrappedArray
+  http://stackoverflow.com/questions/33390925/fail-to-get-an-arraydouble-in-sparks-dataframe
+
+  def getPaidListFromViewListTest(viewList : WrappedArray[Long] ): util.ArrayList[Long]= {
+    val paidList = new util.ArrayList[Long]()
     var editedId = 0L
     for (i <- viewList.indices){
       editedId = viewList(i)
       if (editedId > idPaidMinRange){
         editedId -= idPaidMinRange
-        paidList :+ editedId
+        paidList.add(editedId)
       }
     }
+    return paidList
+  }*/
 
-    return paidList.toArray
-  }
   def getLabelPaidOrNot(paidList: WrappedArray[Long] ) : Boolean={
     if (paidList.length > 0) return true
     return false
+  }
+
+  def getCategoryList(viewList : WrappedArray[Long]):Array[Long]={
+    var categoryList  : List[Long]= Nil
+    var editedId = 0L
+    var categoryId = 0L
+    for (i <- viewList.indices){
+      editedId = viewList(i)
+      if (editedId > itemIdMinRange && editedId <= idPaidMinRange){
+        categoryId = (editedId -1) / itemIdMaxRange
+        categoryList = categoryList :+ categoryId
+      }
+    }
+    return categoryList.toArray
   }
 }
