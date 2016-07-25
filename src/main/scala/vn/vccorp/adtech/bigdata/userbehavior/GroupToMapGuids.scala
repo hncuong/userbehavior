@@ -14,22 +14,22 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql._
 
 object GroupToMapGuids extends UserDefinedAggregateFunction{
-  val encodeRatio = MuachungPathParse.idMaxRange / 1000L
+  val encodeRatio = MuachungPathParse.idMaxRange / 1000
   //milis = 1466687415000 + id = 10138543 = > encodeIdMilis = 146668741510138543 if idMaxRange = 100m
-  def encodeIdMilis(id : Long, milis : Long): Long={
+  def encodeIdMilis(id : Int, milis : Long): Long={
     return id + encodeRatio * milis
   }
   // Schema you get as an input
   def inputSchema = new StructType().
-    add("idMilis", LongType).add("milis", LongType)
+    add("viewId", IntegerType).add("milis", LongType)
 
 
   // Schema of the row which is used for aggregation
 
-  def bufferSchema = new StructType().add("longList", DataTypes.createArrayType(LongType))
+  def bufferSchema = new StructType().add("idMilisList", DataTypes.createArrayType(LongType))
 
   // Returned type
-  def dataType = DataTypes.createArrayType(LongType)
+  def dataType = DataTypes.createArrayType(IntegerType)
 
   // Self-explaining
   def deterministic = true
@@ -38,9 +38,9 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
 
   // Similar to seqOp in aggregate
   def update(buffer: MutableAggregationBuffer, input: Row) = {
-    if (!input.isNullAt(0)){
+    if (!input.isNullAt(0) && !input.isNullAt(1)){
       val longList = new ArrayList[Long](buffer.getList(0))
-      val encodedIdMilis : Long = encodeIdMilis(input.getLong(0), input.getLong(1))
+      val encodedIdMilis : Long = encodeIdMilis(input.getInt(0), input.getLong(1))
       longList.add(encodedIdMilis)
       buffer.update(0, longList)
     }
@@ -61,7 +61,7 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
 
   // Called on exit to get return value
   // def evaluate(buffer: Row) = buffer.getMap(0)
-  def evaluate(buffer: Row): ArrayList[Long] = {
+  def evaluate(buffer: Row): ArrayList[Int] = {
 
 
     val idMilisList = new ArrayList[Long](buffer.getList(0))
@@ -71,10 +71,10 @@ object GroupToMapGuids extends UserDefinedAggregateFunction{
         return o1.compareTo(o2);
       }
     })
-    var idList = new util.ArrayList[Long]()
+    val idList = new util.ArrayList[Int]()
     val iter = idMilisList.iterator()
     while(iter.hasNext() ) {
-      val id: Long = iter.next() % MuachungPathParse.idMaxRange
+      val id: Int = (iter.next() % MuachungPathParse.idMaxRange).toInt
       idList.add(id)
     }
     return idList

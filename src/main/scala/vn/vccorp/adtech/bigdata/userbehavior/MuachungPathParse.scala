@@ -33,12 +33,22 @@ object MuachungPathParse {
     , "me-be"/*8*/, "dao-tao-giai-tri"/*9*/)
 
 
-  final val itemIdMinRange = 10000L // < realitemId
-  final val itemIdMaxRange = 1000000L // > realitemId
-  final val idPaidMinRange = 10000000L // > editedItemId
-  final val idMaxRange = 100000000L // <
+  final val itemIdMinRange = 1000 // < realitemId
+  final val itemIdMaxRange = 1000000 // > realitemId
+  final val idPaidMinRange = 10000000 // > editedItemId
+  final val idMaxRange = 100000000 // <
+  /**
+    * Edited :
+    *   hometypeID : 1
+    *   timkiemID : 2
+    *   danhmucID : (catId + 1) * itemIdMaxRange(1000000L)
+    *   viewItemID : itemId + catId *  itemIdMaxRange
+    *   paidItemID : itemId + idPaidMinRange(=max catId)
+    *   others : 0
+    */
 
-  def  getEditedIdFromPath(path: String): Long = {
+
+  def  getEditedIdFromPath(path: String): Int = {
 
     val splitedPath = path.split(pathSplitedChar)
     val realPath = splitedPath(0) // realPath == /danh-muc
@@ -52,7 +62,7 @@ object MuachungPathParse {
         if (itemPath.length >= 2){
           //  /am-thuc-nha-hang/thoa-thich-an-buffet-cao-cap-ngam-ho-guom-138543.html
           if (isNumeric(itemPath(itemPath.length - 2))){
-            val itemId = itemPath(itemPath.length - 2).toLong
+            val itemId = itemPath(itemPath.length - 2).toInt
             if (itemId < itemIdMaxRange ){
               return itemId + categoryIndex * itemIdMaxRange // 131493
             }
@@ -79,7 +89,7 @@ object MuachungPathParse {
 
         val itemPaymentId = splitedPattern(splitedPattern.length - 1)
         if (isNumeric(itemPaymentId)){
-          return itemPaymentId.toLong + idPaidMinRange
+          return itemPaymentId.toInt + idPaidMinRange
         }
       } //category
 
@@ -96,9 +106,9 @@ object MuachungPathParse {
     }
     return -1
   }
-  def getPaidListFromViewList(viewList : WrappedArray[Long] ):Array[Long]= {
-    var paidList : List[Long]= Nil
-    var editedId = 0L
+  def getPaidListFromViewList(viewList : WrappedArray[Int] ):Array[Int]= {
+    var paidList : List[Int]= Nil
+    var editedId = 0
     //val seq : Seq[Long] = viewList
     for (i <- viewList.indices){
       editedId = viewList(i)
@@ -126,15 +136,15 @@ object MuachungPathParse {
     return paidList
   }*/
 
-  def getLabelPaidOrNot(paidList: WrappedArray[Long] ) : Boolean={
+  def getLabelPaidOrNot(paidList: WrappedArray[Int] ) : Boolean={
     if (paidList.length > 0) return true
     return false
   }
 
-  def getCategoryList(viewList : WrappedArray[Long]):Array[Long]={
-    var categoryList  : List[Long]= Nil
-    var editedId = 0L
-    var categoryId = 0L
+  def getCategoryList(viewList : WrappedArray[Int]):Array[Int]={
+    var categoryList  : List[Int]= Nil
+    var editedId = 0
+    var categoryId = 0
     for (i <- viewList.indices){
       editedId = viewList(i)
       if (editedId > itemIdMinRange && editedId <= idPaidMinRange){

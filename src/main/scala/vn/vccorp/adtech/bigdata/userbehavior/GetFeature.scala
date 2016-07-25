@@ -98,11 +98,11 @@ object GetFeature {
 
     pageView = pageView.groupBy("guid").agg(count("itemId").as("countView"),GroupToMapGuids($"itemId", $"milis").as("idList"))
 
-    val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Long]))
+    val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Int]))
     pageView = pageView.withColumn("paidList", getPaidList($"idList"))
 
-    val getLabelOfPaid = udf(getLabelPaidOrNot(_ : WrappedArray[Long]))
-    val getCategoryLists = udf(getCategoryList(_ : WrappedArray[Long]))
+    val getLabelOfPaid = udf(getLabelPaidOrNot(_ : WrappedArray[Int]))
+    val getCategoryLists = udf(getCategoryList(_ : WrappedArray[Int]))
     pageView = pageView.withColumn("labelOfPaid", getLabelOfPaid($"paidList"))
       .withColumn("categoryList", getCategoryLists($"idList"))
 
