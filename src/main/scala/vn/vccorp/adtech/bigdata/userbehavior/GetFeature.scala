@@ -5,7 +5,8 @@ import utilities.SystemInfo
 import org.apache.spark.sql.{DataFrame, SQLContext, UserDefinedFunction}
 import org.apache.spark.sql.functions.{avg, count, udf}
 import utilities.TimeMeasurent
-import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse.{getEditedIdFromPath, getPaidListFromViewList, getLabelPaidOrNot, getCategoryList}
+import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse._
+import vn.vccorp.adtech.bigdata.userbehavior.PaidItemViewCategoryCount._
 
 import scala.collection.mutable.WrappedArray
 /**
@@ -89,22 +90,26 @@ object GetFeature {
     var pageView = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
       .select("guid", "path", "milis")
 
-    //sqlContext.udf.register("getItemIdFromPath", getIdFromPath(_: String))
+    //split itemId from path
+    //sqlContext.udf.register("getItemIdFromPath", getEditedIdFromPath(_: String))
     val getItemIdFromPath = udf(getEditedIdFromPath(_: String))
     pageView = pageView.withColumn("itemId", getItemIdFromPath(pageView("path")) )
 
-    //test
-    //pv.filter($"itemId" > MuachungPathParse.idPaidMinRange).show()
+    //group by guid, agg count, idList sort by time(milis)
+    pageView = pageView.groupBy("guid").agg(count("itemId").as("countView"),
+      GroupToMapGuidsIdMilis($"itemId", $"milis").as("idList"))
 
-    pageView = pageView.groupBy("guid").agg(count("itemId").as("countView"),GroupToMapGuids($"itemId", $"milis").as("idList"))
-
+    //get paidList from idList
     val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Int]))
     pageView = pageView.withColumn("paidList", getPaidList($"idList"))
 
+    //Label : paid - 1, not-paid - 0
     val getLabelOfPaid = udf(getLabelPaidOrNot(_ : WrappedArray[Int]))
-    val getCategoryLists = udf(getCategoryList(_ : WrappedArray[Int]))
     pageView = pageView.withColumn("labelOfPaid", getLabelOfPaid($"paidList"))
-      .withColumn("categoryList", getCategoryLists($"idList"))
+
+    // Item view before paid
+    val getCountItemViewBeforePaidAverage = udf(countViewBeforePaidAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
+    pageView = pageView.withColumn("averageCountItemViewBeforePaid", getCountItemViewBeforePaidAverage($"idList",$"paidList" ))
 
     return pageView
   }
