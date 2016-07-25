@@ -72,7 +72,7 @@ object PaidItemViewCategoryCount {
     return -1
   }
 
-  def getViewCategory(viewId : Int): Unit ={
+  def getViewCategory(viewId : Int): Int ={
     if (viewId > MuachungPathParse.itemIdMinRange && viewId <= MuachungPathParse.idPaidMinRange){
       return (viewId - 1) / MuachungPathParse.itemIdMaxRange
     }

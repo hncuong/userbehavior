@@ -100,7 +100,6 @@ object MuachungPathParse {
     return 0
   }
   def getCategoryIndex(categoryName : String):Int={
-    var index = 0
     for ( index <- 0 until categoryList.length){
       if (categoryList(index) == categoryName) return index
     }

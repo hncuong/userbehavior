@@ -23,8 +23,8 @@ object GetFeature {
     println("Start page view analysis!!")
 
     val guidViewPaidList = getPageViewUserFeature(sc, sqlContext, date)
-    guidViewPaidList.show(false)
-    guidViewPaidList.filter($"labelOfPaid" === true).show(false)
+    guidViewPaidList.show()
+    guidViewPaidList.filter($"labelOfPaid" === true).show()
     guidViewPaidList.printSchema()
 
 
@@ -109,7 +109,17 @@ object GetFeature {
 
     // Item view before paid
     val getCountItemViewBeforePaidAverage = udf(countViewBeforePaidAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
-    pageView = pageView.withColumn("averageCountItemViewBeforePaid", getCountItemViewBeforePaidAverage($"idList",$"paidList" ))
+    pageView = pageView.withColumn("avgCountItemViewBeforePaid", getCountItemViewBeforePaidAverage($"paidList", $"idList" ))
+
+    //item view all
+    val getCountItemViewTotalAverage = udf(countViewTotalAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
+    pageView = pageView.withColumn("avgCountItemViewTotal", getCountItemViewTotalAverage($"paidList", $"idList" ))
+
+    //category view before paid and all
+    val getCountCatViewBeforePaidAverage = udf(countCategoryBeforePaidAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
+    val getCountCatViewTotalAverage = udf(countCategoryTotalAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
+    pageView = pageView.withColumn("avgCountCatViewBeforePaid", getCountCatViewBeforePaidAverage($"paidList", $"idList" ))
+      .withColumn("avgCountCatViewTotal", getCountCatViewTotalAverage($"paidList", $"idList" ))
 
     return pageView
   }
