@@ -1,12 +1,11 @@
-package vn.vccorp.adtech.bigdata.userbehavior
+package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 
-import scala.collection.mutable.{WrappedArray, Map}
-
-import vn.vccorp.adtech.bigdata.userbehavior.PaidItemViewCategoryCount._
+import scala.collection.mutable.{Map, WrappedArray}
+import PaidViewCategoryCountIndex._
 /**
   * Created by cuonghn on 7/25/16.
   */
-object ViewListAnalysis {
+object IsPaidMaxViewCategory {
   def maxViewCount(viewList : WrappedArray[Int]): Int ={
     var maxCount = 0
     var itemIdCount  = Map[Int, Int]()

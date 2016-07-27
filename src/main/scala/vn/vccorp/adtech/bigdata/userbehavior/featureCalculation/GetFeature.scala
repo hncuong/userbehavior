@@ -1,14 +1,12 @@
-package vn.vccorp.adtech.bigdata.userbehavior
+package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 
 import org.apache.spark.SparkContext
-import utilities.SystemInfo
-import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.functions.{avg, count, udf}
-
-import utilities.TimeMeasurent
-import vn.vccorp.adtech.bigdata.userbehavior.MuachungPathParse._
-import vn.vccorp.adtech.bigdata.userbehavior.PaidItemViewCategoryCount._
-import vn.vccorp.adtech.bigdata.userbehavior.ViewListAnalysis._
+import org.apache.spark.sql.{DataFrame, SQLContext}
+import utilities.{SystemInfo, TimeMeasurent}
+import MuachungPathParse._
+import PaidViewCategoryCountIndex._
+import IsPaidMaxViewCategory._
 
 import scala.collection.mutable.WrappedArray
 /**
@@ -19,14 +17,14 @@ object GetFeature {
 
   case class user(guid: String, domain: String, tos: Int, tor: Int)
 
-  def getUserFeatures(sc: SparkContext, sqlContext: SQLContext, date:String): Unit ={
+  def getUserFeatures(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame ={
     import sqlContext.implicits._
     val timeMeasurent = new TimeMeasurent()
     println("Start page view analysis!!")
 
-    val guidViewPaidList = getPageViewUserFeature(sc, sqlContext, date)
+    val userFeature = getPageViewUserFeature(sc, sqlContext, date)
     //guidViewPaidList.show()
-    guidViewPaidList.filter($"label" === true).show()
+    userFeature.filter($"label" === true).show()
     //guidViewPaidList.printSchema()
 
 
@@ -65,9 +63,8 @@ object GetFeature {
  |-- milis: long (nullable = true)
     * */
 
-
     timeMeasurent.getDistanceAndRestart()
-
+    return userFeature
   }
 
 

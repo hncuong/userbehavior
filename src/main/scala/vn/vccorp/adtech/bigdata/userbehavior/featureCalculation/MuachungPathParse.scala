@@ -1,6 +1,4 @@
-package vn.vccorp.adtech.bigdata.userbehavior
-
-import java.util
+package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 
 import utilities.NumericString.isNumeric
 

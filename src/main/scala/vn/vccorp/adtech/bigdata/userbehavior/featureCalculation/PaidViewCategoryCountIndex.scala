@@ -1,11 +1,13 @@
-package vn.vccorp.adtech.bigdata.userbehavior
+package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
+
+import MuachungPathParse._
 
 import scala.collection.mutable.WrappedArray
 
 /**
   * Created by cuonghn on 7/25/16.
   */
-object PaidItemViewCategoryCount {
+object PaidViewCategoryCountIndex {
 
   /**
     * view : itemId = paidId

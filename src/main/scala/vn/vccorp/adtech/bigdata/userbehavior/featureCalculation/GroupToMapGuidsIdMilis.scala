@@ -1,4 +1,4 @@
-package vn.vccorp.adtech.bigdata.userbehavior
+package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 
 /**
   * Created by cuonghn on 7/18/16.
@@ -6,12 +6,12 @@ package vn.vccorp.adtech.bigdata.userbehavior
 import java.util
 import java.util.{ArrayList, Collections, Comparator}
 
-import org.apache.spark.sql.expressions.UserDefinedAggregateFunction
-import org.apache.spark.sql.expressions.MutableAggregationBuffer
+import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
+import MuachungPathParse._
 
 //import org.apache.spark.sql.types.DataType;
-import org.apache.spark.sql.types._
 import org.apache.spark.sql._
+import org.apache.spark.sql.types._
 
 object GroupToMapGuidsIdMilis extends UserDefinedAggregateFunction{
   val encodeRatio = MuachungPathParse.idMaxRange / 1000

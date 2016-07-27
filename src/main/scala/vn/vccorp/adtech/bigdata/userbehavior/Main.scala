@@ -3,6 +3,7 @@ package vn.vccorp.adtech.bigdata.userbehavior
 import org.apache.spark.{SparkConf, SparkContext}
 import org.slf4j.LoggerFactory
 import utilities.SystemInfo
+import vn.vccorp.adtech.bigdata.userbehavior.featureCalculation.GetFeature
 /**
   * Created by hncuong on 7/7/16.
   */
