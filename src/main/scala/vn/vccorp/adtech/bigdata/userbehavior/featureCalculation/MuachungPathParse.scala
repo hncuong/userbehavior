@@ -133,9 +133,9 @@ object MuachungPathParse {
     return paidList
   }*/
 
-  def getLabelPaidOrNot(paidList: WrappedArray[Int] ) : Boolean={
-    if (paidList.length > 0) return true
-    return false
+  def getLabelPaidOrNot(paidList: WrappedArray[Int] ) : Double={
+    if (paidList.length > 0) return 1.toDouble
+    return 0.toDouble
   }
 
   def getCategoryList(viewList : WrappedArray[Int]):Array[Int]={

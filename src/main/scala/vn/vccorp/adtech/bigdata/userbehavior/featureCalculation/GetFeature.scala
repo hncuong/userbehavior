@@ -1,7 +1,7 @@
 package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{avg, count, udf}
+import org.apache.spark.sql.functions.{avg, count, udf, max, min}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 import utilities.{SystemInfo, TimeMeasurent}
 import MuachungPathParse._
@@ -20,21 +20,48 @@ object GetFeature {
   def getUserFeatures(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame ={
     import sqlContext.implicits._
     val timeMeasurent = new TimeMeasurent()
-    println("Start page view analysis!!")
+    println("Start get feature date: " + date)
 
-    val userFeature = getPageViewUserFeature(sc, sqlContext, date)
+    val pvFeature = getPageViewUserFeature(sc, sqlContext, date)
     //guidViewPaidList.show()
-    userFeature.filter($"label" === true).show()
+    //userFeature.filter($"label" === true).show()
     //guidViewPaidList.printSchema()
 
 
 
-    timeMeasurent.getDistanceAndRestart()
-    println("Start time on site analysis!!")
+    //timeMeasurent.getDistanceAndRestart()
+   // println("Start time on site analysis!!")
 
     //time on site : muachung.vn -> (guid, count, avg(tos), avg(tor))
     val tos = getTimeOnSiteFeature(sc, sqlContext, date)
-    tos.show()
+    //tos.show()
+
+    val userFeature = pvFeature.join(tos, "guid")
+    //userFeature.show()
+    /*guid|countView|              idList|paidList|label|avgCountItemViewBeforePa
+id|avgCountItemViewTotal|avgCountCatViewBeforePaid|avgCountCatViewTotal|maxViewCount|maxCat
+Cnt|isMaxView|isMaxCat|          avg(tos)|          avg(tor)|*/
+    println("get feature: Done !! date: " + date)
+    timeMeasurent.getDistanceAndRestart()
+    return userFeature
+  }
+
+
+  def getTimeOnSiteFeature(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame={
+    val tosDate = date.replaceAll("-", "")
+    val tosPath = systemInfo.getString("timeonsite_path").replace("yyyyMMdd", tosDate)
+
+    println("Start time on site analysis!! : " + tosPath)
+
+    import sqlContext.implicits._
+    val tos = sc.textFile(tosPath).map(_.split("\t")).map(u => user(u(0), u(2), u(4).toInt, u(5).toInt))
+      .toDF().filter($"domain".like(systemInfo.getString("domain"))).groupBy("guid").
+      agg(max("tos").as("maxTos"),avg("tos").as("avgTos"),max("tor").as("maxTor"), avg("tor").as("avgTor"))
+    return tos
+  }
+
+  def getPageViewUserFeature(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame={
+    import sqlContext.implicits._
     /*pageview data
     root
  |-- dt: string (nullable = true)
@@ -62,27 +89,6 @@ object GetFeature {
  |-- utm_medium: string (nullable = true)
  |-- milis: long (nullable = true)
     * */
-
-    timeMeasurent.getDistanceAndRestart()
-    return userFeature
-  }
-
-
-  def getTimeOnSiteFeature(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame={
-    val tosDate = date.replaceAll("-", "")
-    val tosPath = systemInfo.getString("timeonsite_path").replace("yyyyMMdd", tosDate)
-
-    println("Start time on site analysis!! : " + tosPath)
-
-    import sqlContext.implicits._
-    val tos = sc.textFile(tosPath).map(_.split("\t")).map(u => user(u(0), u(2), u(4).toInt, u(5).toInt))
-      .toDF().filter($"domain".like(systemInfo.getString("domain"))).groupBy("guid").
-      agg(avg("tos"), avg("tor"))
-    return tos
-  }
-
-  def getPageViewUserFeature(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame={
-    import sqlContext.implicits._
     println("Start pv analysis!! : " + date)
     val pageViewPath = systemInfo.getString("pageview_path").replace("yyyy-MM-dd", date)
     var pageView = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
