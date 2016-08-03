@@ -19,12 +19,14 @@ object GetFeature {
 
   def getUserFeatures(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame ={
     import sqlContext.implicits._
-    val timeMeasurent = new TimeMeasurent()
-    println("Start get feature date: " + date)
+    /*val timeMeasurent = new TimeMeasurent()
+    println("Start get feature date: " + date)*/
 
     val pvFeature = getPageViewUserFeature(sc, sqlContext, date)
+    //pvFeature.groupBy("label","countView").agg(count("guid")).show(400)
+    pvFeature.filter($"label" === 1.0).groupBy("isMaxCat", "isMaxView").agg(count("guid")).show()
     //guidViewPaidList.show()
-    //userFeature.filter($"label" === true).show()
+    //userFeature.filter($"label" === 1.0).show()
     //guidViewPaidList.printSchema()
 
 
@@ -41,8 +43,8 @@ object GetFeature {
     /*guid|countView|              idList|paidList|label|avgCountItemViewBeforePa
 id|avgCountItemViewTotal|avgCountCatViewBeforePaid|avgCountCatViewTotal|maxViewCount|maxCat
 Cnt|isMaxView|isMaxCat|          avg(tos)|          avg(tor)|*/
-    println("get feature: Done !! date: " + date)
-    timeMeasurent.getDistanceAndRestart()
+    /*println("get feature: Done !! date: " + date)
+    timeMeasurent.getDistanceAndRestart()*/
     return userFeature
   }
 
@@ -51,7 +53,7 @@ Cnt|isMaxView|isMaxCat|          avg(tos)|          avg(tor)|*/
     val tosDate = date.replaceAll("-", "")
     val tosPath = systemInfo.getString("timeonsite_path").replace("yyyyMMdd", tosDate)
 
-    println("Start time on site analysis!! : " + tosPath)
+    //println("Start time on site analysis!! : " + tosPath)
 
     import sqlContext.implicits._
     val tos = sc.textFile(tosPath).map(_.split("\t")).map(u => user(u(0), u(2), u(4).toInt, u(5).toInt))
@@ -89,7 +91,7 @@ Cnt|isMaxView|isMaxCat|          avg(tos)|          avg(tor)|*/
  |-- utm_medium: string (nullable = true)
  |-- milis: long (nullable = true)
     * */
-    println("Start pv analysis!! : " + date)
+    //println("Start pv analysis!! : " + date)
     val pageViewPath = systemInfo.getString("pageview_path").replace("yyyy-MM-dd", date)
     var pageView = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
       .select("guid", "path", "milis")
