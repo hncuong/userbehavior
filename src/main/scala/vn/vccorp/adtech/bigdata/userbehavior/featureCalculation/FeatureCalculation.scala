@@ -48,7 +48,6 @@ object FeatureCalculation {
       avg("avgCountItemViewTotal"), avg("avgCountCatViewBeforePaid"),
       avg("avgCountCatViewTotal"), avg("maxViewCount"), avg("maxCatCnt"),
       avg("maxTos"), avg("maxTor"), avg("avgTos"), avg("avgTor")).show(false)
-    //userFeature.show()
     /*println("get feature: Done !! date: " + date)
     timeMeasurent.getDistanceAndRestart()*/
     return viewInfo
@@ -116,7 +115,8 @@ object FeatureCalculation {
     viewInfo = viewInfo.withColumn("itemId", getItemIdFromPath(viewInfo("path")) )
 
     //group by guid, agg count, idList sort by time(milis)
-    viewInfo = viewInfo.groupBy("guid").agg(count("itemId").as("countView"),
+    viewInfo = viewInfo.groupBy("guid").agg(count("itemId").as("countView"),max("tos").as("maxTos"),
+      avg("tos").as("avgTos"),max("tor").as("maxTor"), avg("tor").as("avgTor"),
       GuidsIdMilisUDAF($"itemId", $"milis").as("idList"))
 
     //get paidList from idList

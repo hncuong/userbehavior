@@ -6,6 +6,7 @@ import utilities.SystemInfo
 import vn.vccorp.adtech.bigdata.userbehavior.featureCalculation.FeatureCalculation.getUserFeatures
 import vn.vccorp.adtech.bigdata.userbehavior.machineLearning.Classification._
 import vn.vccorp.adtech.bigdata.userbehavior.util.SampleData._
+import vn.vccorp.adtech.bigdata.userbehavior.statisticalAnalysis.Analysis._
 /**
   * Created by hncuong on 7/7/16.
   */
@@ -22,7 +23,10 @@ object Main {
       val sqlContext = new org.apache.spark.sql.SQLContext(sc)
       import sqlContext.implicits._
       val testData = getUserFeatures(sc, sqlContext, args(0))//.filter($"label" === 1.0)
-      var trainData = getUserFeatures(sc, sqlContext, trainDates(0))
+      val trainData = sampleData(sc, sqlContext, testData, args(1).toDouble)
+      trainData.show()
+      dataAnalysis(sc, sqlContext, trainData)
+      //var trainData = getUserFeatures(sc, sqlContext, trainDates(0))
       //getUserFeatures(sc, sqlContext, args(0))
       /*for (i <- 1 until trainDates.length){
         trainData = trainData.unionAll(getUserFeatures(sc, sqlContext, trainDates(i)))
