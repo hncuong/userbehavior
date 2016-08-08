@@ -3,8 +3,8 @@ package vn.vccorp.adtech.bigdata.userbehavior
 import org.apache.spark.{SparkConf, SparkContext}
 import org.slf4j.LoggerFactory
 import utilities.SystemInfo
-import vn.vccorp.adtech.bigdata.userbehavior.featureCalculation.GetFeature.getUserFeatures
-import vn.vccorp.adtech.bigdata.userbehavior.machineLearning.Classification.runLogisticRegression
+import vn.vccorp.adtech.bigdata.userbehavior.featureCalculation.FeatureCalculation.getUserFeatures
+import vn.vccorp.adtech.bigdata.userbehavior.machineLearning.Classification._
 /**
   * Created by hncuong on 7/7/16.
   */
@@ -26,7 +26,10 @@ object Main {
       for (i <- 1 until trainDates.length){
         trainData = trainData.unionAll(getUserFeatures(sc, sqlContext, trainDates(i)))
       }
-      runLogisticRegression(sc, sqlContext, trainData, testData, args(1).toDouble)*/
+      //runLogisticRegression(sc, sqlContext, trainData, testData, args(1).toDouble)
+      //runDecisionTree(sc, sqlContext, trainData, testData)
+      //runRandomForest(sc, sqlContext, trainData, testData)
+      runNaiveBayes(sc, sqlContext, trainData, testData)*/
       sc.stop()
     }
 

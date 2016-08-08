@@ -7,13 +7,13 @@ import scala.collection.mutable.WrappedArray
 /**
   * Created by cuonghn on 7/25/16.
   */
-object PaidViewCategoryCountIndex {
+object PaidInViewListAnalysis {
 
   /**
     * view : itemId = paidId
     */
   // paid : 10 ; view :catId [0 - 9]; else -1
-  def checkItemView(paidItem : Int, viewId : Int): Int ={
+  def checkIfItemIsView(paidItem : Int, viewId : Int): Int ={
     val diffId = viewId - paidItem
     if (diffId % MuachungPathParse.itemIdMaxRange == 0 ){
       return diffId / MuachungPathParse.itemIdMaxRange
@@ -24,7 +24,7 @@ object PaidViewCategoryCountIndex {
   def countViewBeforePaid(paidItem : Int, viewList : WrappedArray[Int]): Int ={
     var count = 0
     for (i <- viewList.indices){
-      val checkViewFlag = checkItemView(paidItem, viewList(i))
+      val checkViewFlag = checkIfItemIsView(paidItem, viewList(i))
       if (checkViewFlag == 10) return count
       if (checkViewFlag >= 0)  count += 1
     }
@@ -44,7 +44,7 @@ object PaidViewCategoryCountIndex {
   def countViewTotal(paidItem : Int, viewList : WrappedArray[Int]): Int ={
     var count = 0
     for (i <- viewList.indices){
-      val checkViewFlag = checkItemView(paidItem, viewList(i))
+      val checkViewFlag = checkIfItemIsView(paidItem, viewList(i))
       if (checkViewFlag >= 0 && checkViewFlag < 10) count += 1
     }
     return count
@@ -68,7 +68,7 @@ object PaidViewCategoryCountIndex {
 
   def getCategoryOfPaidItem(paidItem : Int, viewList : WrappedArray[Int]): Int ={
     for (i <- viewList.indices){
-      val checkViewFlag = checkItemView(paidItem, viewList(i))
+      val checkViewFlag = checkIfItemIsView(paidItem, viewList(i))
       if (checkViewFlag >= 0 && checkViewFlag < 10) return checkViewFlag
     }
     return -1
@@ -86,7 +86,7 @@ object PaidViewCategoryCountIndex {
     if (categoryId == -1) return 0
     var count = 0
     for (i <- viewList.indices){
-      if (checkItemView(paidItem, viewList(i)) == 10) return count
+      if (checkIfItemIsView(paidItem, viewList(i)) == 10) return count
       if (getViewCategory(viewList(i)) == categoryId) count += 1
     }
     return count
@@ -131,12 +131,13 @@ object PaidViewCategoryCountIndex {
   def countAllViewBeforePaid(paidItem : Int, viewList : WrappedArray[Int]): Int ={
     var count = 0
     for (i <- viewList.indices){
-      if (checkItemView(paidItem, viewList(i)) == 10) return count
+      if (checkIfItemIsView(paidItem, viewList(i)) == 10) return count
       if (viewList(i) > MuachungPathParse.idPaidMinRange) count = 0 //reset by sessions : separated by paid
       if (viewList(i) > MuachungPathParse.itemIdMinRange && viewList(i) <= MuachungPathParse.idPaidMinRange) count += 1
     }
     return count
   }
+
 
   def countAllViewBeforePaidAverage(paidList : WrappedArray[Int], viewList : WrappedArray[Int]): Float ={
     val paidListLength = paidList.length

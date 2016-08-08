@@ -31,23 +31,22 @@ object Classification {
       .setOutputCol("features")
 
     //Logistic Regression
-    val lr = new LogisticRegression().setMaxIter(20).setRegParam(0.05).setThreshold(0.55)
+    val lr = new LogisticRegression().setMaxIter(20).setRegParam(0.05).setThreshold(0.55).setPredictionCol("predictedLabel")
 
     //Pipeline
     val pipeline = new Pipeline().setStages(Array(assembler,lr))
 
     //Parameter sets
     val paraMap =  ParamMap(lr.maxIter -> 25).put(lr.regParam, 0.1).put(lr.threshold, thresholdValue)
-      .put(assembler.inputCols, Array("countView", "maxViewCount", "maxTos", "maxTor", "avgTos", "avgTor"
-        , "avgCountItemViewBeforePaid","avgCountItemViewTotal","avgCountCatViewBeforePaid",
-        "avgCountCatViewTotal","isMaxView", "isMaxCat"))
+      .put(assembler.inputCols, Array("countView", "maxViewCount", "maxCatCnt", "maxTos", "maxTor", "avgTos", "avgTor"))
 
     //TRAINING : fit()
     val model  = pipeline.fit(trainData, paraMap)
+
     println("Logistic Regression: Fitted !!! " )
     //TESTING : transform()
-    val predictionData = model.transform(testData).select("guid","label", "prediction")
-    val accuracy = predictionData.agg( AccuracyCalculation(predictionData("prediction"),
+    val predictionData = model.transform(testData).select("guid","label", "predictedLabel")
+    val accuracy = predictionData.agg( AccuracyCalculation(predictionData("predictedLabel"),
       predictionData("label") ).as("accuracy"))
     accuracy.show(false)
 
@@ -56,21 +55,23 @@ object Classification {
   def runDecisionTree(sc: SparkContext, sqlContext: SQLContext, trainData: DataFrame,
                       testData: DataFrame): Unit ={
     val assembler = new VectorAssembler()
-      .setInputCols(Array("countView", "maxTos", "maxTor", "avgCountItemViewTotal", "avgCountCatViewBeforePaid",
+      .setInputCols(Array("countView", "maxTos", "maxTor",  "avgTos", "avgTor" ,
         "maxViewCount", "maxCatCnt"))
       .setOutputCol("features")
+    val dataSet = assembler.transform(trainData)
+    val testSet = assembler.transform(testData)
     // Index labels, adding metadata to the label column.
     // Fit on whole dataset to include all labels in index.
     val labelIndexer = new StringIndexer()
       .setInputCol("label")
       .setOutputCol("indexedLabel")
-      .fit(trainData)
+      .fit(dataSet)
     // Automatically identify categorical features, and index them.
     val featureIndexer = new VectorIndexer()
       .setInputCol("features")
       .setOutputCol("indexedFeatures")
       .setMaxCategories(4) // features with > 4 distinct values are treated as continuous.
-      .fit(trainData)
+      .fit(dataSet)
 
     // Train a DecisionTree model.
     val dt = new DecisionTreeClassifier()
@@ -88,14 +89,84 @@ object Classification {
       .setStages(Array(labelIndexer, featureIndexer, dt, labelConverter))
 
     // Train model. This also runs the indexers.
-    val model = pipeline.fit(trainData)
+    val model = pipeline.fit(dataSet)
 
     // Make predictions.
-    val predictions = model.transform(testData)
+    val predictionData = model.transform(testSet).select("guid","label", "predictedLabel")
+    val accuracy = predictionData.agg( AccuracyCalculation(predictionData("predictedLabel"),
+      predictionData("label") ).as("accuracy"))
+    accuracy.show(false)
+
+
+
   }
 
-  def runNaiveBayes(): Unit ={
-    val nb = new NaiveBayes()
+  def runRandomForest(sc: SparkContext, sqlContext: SQLContext, trainData: DataFrame,
+                      testData: DataFrame): Unit ={
+    val assembler = new VectorAssembler()
+      .setInputCols(Array("countView", "maxTos", "maxTor",  "avgTos", "avgTor" ,
+        "maxViewCount", "maxCatCnt"))
+      .setOutputCol("features")
+    val dataset = assembler.transform(trainData)
+    // Index labels, adding metadata to the label column.
+    // Fit on whole dataset to include all labels in index.
+    val labelIndexer = new StringIndexer()
+      .setInputCol("label")
+      .setOutputCol("indexedLabel")
+      .fit(dataset)
+    // Automatically identify categorical features, and index them.
+    val featureIndexer = new VectorIndexer()
+      .setInputCol("features")
+      .setOutputCol("indexedFeatures")
+      .setMaxCategories(4) // features with > 4 distinct values are treated as continuous.
+      .fit(dataset)
+
+    // Train a DecisionTree model.
+    val rf = new RandomForestClassifier()
+      .setLabelCol("indexedLabel")
+      .setFeaturesCol("indexedFeatures").setNumTrees(8)
+
+    // Convert indexed labels back to original labels.
+    val labelConverter = new IndexToString()
+      .setInputCol("prediction")
+      .setOutputCol("predictedLabel")
+      .setLabels(labelIndexer.labels)
+
+    // Chain indexers and tree in a Pipeline.
+    val pipeline = new Pipeline()
+      .setStages(Array(labelIndexer, featureIndexer, rf, labelConverter))
+
+    // Train model. This also runs the indexers.
+    val model = pipeline.fit(dataset)
+
+    // Make predictions.
+    val predictionData = model.transform(testData).select("guid","label", "predictedLabel")
+    val accuracy = predictionData.agg( AccuracyCalculation(predictionData("predictedLabel"),
+      predictionData("label") ).as("accuracy"))
+    accuracy.show(false)
+
+
+
+  }
+
+  def runNaiveBayes(sc: SparkContext, sqlContext: SQLContext, trainData: DataFrame,
+                    testData: DataFrame): Unit ={
+    val assembler = new VectorAssembler()
+      .setInputCols(Array("countView", "maxTos", "maxTor",  "avgTos", "avgTor" ,
+        "maxViewCount", "maxCatCnt"))
+      .setOutputCol("features")
+
+    val nb = new NaiveBayes().setPredictionCol("predictedLabel")
+    val pipeline = new Pipeline()
+      .setStages(Array(assembler, nb))
+    val model = pipeline.fit(trainData)
+
+    // Select example rows to display.
+    val predictionData = model.transform(testData).select("guid","label", "predictedLabel")
+    val accuracy = predictionData.agg( AccuracyCalculation(predictionData("predictedLabel"),
+      predictionData("label") ).as("accuracy"))
+    accuracy.show(false)
+
   }
 
   /*def runRandomForest(sc: SparkContext, sqlContext: SQLContext, trainData: DataFrame,

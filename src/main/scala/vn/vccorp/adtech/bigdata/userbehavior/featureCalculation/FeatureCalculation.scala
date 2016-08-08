@@ -5,14 +5,18 @@ import org.apache.spark.sql.functions.{avg, count, udf, max, min}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 import utilities.{SystemInfo, TimeMeasurent}
 import MuachungPathParse._
-import PaidViewCategoryCountIndex._
-import IsPaidMaxViewCategory._
+import PaidInViewListAnalysis._
+import MaxViewCalculation._
 
 import scala.collection.mutable.WrappedArray
 /**
   * Created by hncuong on 7/7/16.
   */
-object GetFeature {
+//data
+/*guid|countView|              idList|paidList|label|avgCountItemViewBeforePa
+id|avgCountItemViewTotal|avgCountCatViewBeforePaid|avgCountCatViewTotal|maxViewCount|maxCat
+Cnt|isMaxView|isMaxCat|  maxTos |        avgTos|       maxTor|   avgTor|*/
+object FeatureCalculation {
   final val systemInfo = SystemInfo.getConfiguration
 
   case class user(guid: String, domain: String, tos: Int, tor: Int)
@@ -23,8 +27,11 @@ object GetFeature {
     println("Start get feature date: " + date)*/
 
     val pvFeature = getPageViewUserFeature(sc, sqlContext, date)
-    //pvFeature.groupBy("label","countView").agg(count("guid")).show(400)
-    pvFeature.filter($"label" === 1.0).groupBy("isMaxCat", "isMaxView").agg(count("guid")).show()
+    pvFeature.groupBy("label").agg(avg("countView"), avg("avgCountItemViewBeforePaid"),
+      avg("avgCountItemViewTotal"), avg("avgCountCatViewBeforePaid"),
+      avg("avgCountCatViewTotal"), avg("maxViewCount"), avg("maxCatCnt"),
+      avg("maxTos"), avg("maxTor"), avg("avgTos"), avg("avgTor")).show(false)
+    //pvFeature.filter($"label" === 1.0).groupBy("isMaxCat", "isMaxView").agg(count("guid")).show()
     //guidViewPaidList.show()
     //userFeature.filter($"label" === 1.0).show()
     //guidViewPaidList.printSchema()
@@ -40,9 +47,6 @@ object GetFeature {
 
     val userFeature = pvFeature.join(tos, "guid")
     //userFeature.show()
-    /*guid|countView|              idList|paidList|label|avgCountItemViewBeforePa
-id|avgCountItemViewTotal|avgCountCatViewBeforePaid|avgCountCatViewTotal|maxViewCount|maxCat
-Cnt|isMaxView|isMaxCat|          avg(tos)|          avg(tor)|*/
     /*println("get feature: Done !! date: " + date)
     timeMeasurent.getDistanceAndRestart()*/
     return userFeature
@@ -103,7 +107,7 @@ Cnt|isMaxView|isMaxCat|          avg(tos)|          avg(tor)|*/
 
     //group by guid, agg count, idList sort by time(milis)
     pageView = pageView.groupBy("guid").agg(count("itemId").as("countView"),
-      GroupToMapGuidsIdMilis($"itemId", $"milis").as("idList"))
+      GuidsIdMilisUDAF($"itemId", $"milis").as("idList"))
 
     //get paidList from idList
     val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Int]))

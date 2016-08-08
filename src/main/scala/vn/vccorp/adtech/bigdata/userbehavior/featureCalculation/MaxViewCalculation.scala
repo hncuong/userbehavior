@@ -1,14 +1,14 @@
 package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 
 import scala.collection.mutable.{Map, WrappedArray}
-import PaidViewCategoryCountIndex._
+import PaidInViewListAnalysis._
 /**
   * Created by cuonghn on 7/25/16.
   */
-object IsPaidMaxViewCategory {
-  def maxViewCount(viewList : WrappedArray[Int]): Int ={
+object MaxViewCalculation {
+  def maxViewCount(viewList : scala.collection.mutable.WrappedArray[Int]): Int ={
     var maxCount = 0
-    var itemIdCount  = Map[Int, Int]()
+    var itemIdCount  = scala.collection.mutable.Map[Int, Int]()
     for (i <- viewList.indices){
       val itemId = getItemIdFromViewId(viewList(i))
       if (itemId > 0  ){
@@ -36,8 +36,9 @@ object IsPaidMaxViewCategory {
 
 
 
-  def isPaidMaxView(paidList : WrappedArray[Int], viewList : WrappedArray[Int]): Boolean ={
-    if (paidList.length == 0) return false
+  def isPaidMaxView(paidList : scala.collection.mutable.WrappedArray[Int],
+                    viewList : scala.collection.mutable.WrappedArray[Int]): Boolean ={
+    if (paidList.isEmpty) return false
     val maxViewCnt = maxViewCount(viewList)
     for (i <- paidList.indices){
       if (countViewTotal(paidList(i), viewList) == maxViewCnt) return true
@@ -48,9 +49,9 @@ object IsPaidMaxViewCategory {
   //Category
 
 
-  def maxCategoryCount(viewList : WrappedArray[Int]): Int ={
+  def maxCategoryCount(viewList : scala.collection.mutable.WrappedArray[Int]): Int ={
     var maxCount = 0
-    var catIdCount  = Map[Int, Int]()
+    var catIdCount  = scala.collection.mutable.Map[Int, Int]()
     for (i <- viewList.indices){
       val catId = getViewCategory(viewList(i))
       if (catId >= 0  ){
@@ -68,12 +69,19 @@ object IsPaidMaxViewCategory {
     return maxCount
   }
 
-  def isPaidMaxCategoryView(paidList : WrappedArray[Int], viewList : WrappedArray[Int]): Boolean ={
-    if (paidList.length == 0) return false
+  def isPaidMaxCategoryView(paidList : scala.collection.mutable.WrappedArray[Int],
+                            viewList : scala.collection.mutable.WrappedArray[Int]): Boolean ={
+    if (paidList.isEmpty) return false
     val maxCatCnt = maxCategoryCount(viewList)
     for (i <- paidList.indices){
       if (countCategoryTotal(paidList(i), viewList) == maxCatCnt) return true
     }
+    return false
+  }
+
+  def isLastTwoView(paidList : scala.collection.mutable.WrappedArray[Int], viewList : scala.collection.mutable.WrappedArray[Int]): Boolean ={
+    if (paidList.isEmpty || viewList.isEmpty) return false
+    var lastView = viewList(viewList.length - 1)
     return false
   }
 }

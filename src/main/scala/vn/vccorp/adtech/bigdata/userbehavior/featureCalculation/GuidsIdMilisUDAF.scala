@@ -13,7 +13,7 @@ import MuachungPathParse._
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 
-object GroupToMapGuidsIdMilis extends UserDefinedAggregateFunction{
+object GuidsIdMilisUDAF extends UserDefinedAggregateFunction{
   val encodeRatio = MuachungPathParse.idMaxRange / 1000
   //milis = 1466687415000 + id = 10138543 = > encodeIdMilis = 146668741510138543 if idMaxRange = 100m
   def encodeIdMilis(id : Int, milis : Long): Long={
