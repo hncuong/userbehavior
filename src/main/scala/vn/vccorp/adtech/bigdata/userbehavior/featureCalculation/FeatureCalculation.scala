@@ -3,10 +3,11 @@ package vn.vccorp.adtech.bigdata.userbehavior.featureCalculation
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions.{avg, count, udf, max, min}
 import org.apache.spark.sql.{DataFrame, SQLContext}
-import utilities.{SystemInfo, TimeMeasurent}
+import utilities.{SystemInfo, TimeMeasurent, TimeUtils}
 import MuachungPathParse._
 import PaidInViewListAnalysis._
 import MaxViewCalculation._
+
 
 import scala.collection.mutable.WrappedArray
 /**
@@ -19,18 +20,15 @@ Cnt|isMaxView|isMaxCat|  maxTos |        avgTos|       maxTor|   avgTor|*/
 object FeatureCalculation {
   final val systemInfo = SystemInfo.getConfiguration
 
-  case class user(guid: String, domain: String, tos: Int, tor: Int)
+  case class user(guid: String, domain: String, path: String, tos: Int, tor: Int, dt: String)
 
   def getUserFeatures(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame ={
     import sqlContext.implicits._
     /*val timeMeasurent = new TimeMeasurent()
     println("Start get feature date: " + date)*/
 
-    val pvFeature = getPageViewUserFeature(sc, sqlContext, date)
-    pvFeature.groupBy("label").agg(avg("countView"), avg("avgCountItemViewBeforePaid"),
-      avg("avgCountItemViewTotal"), avg("avgCountCatViewBeforePaid"),
-      avg("avgCountCatViewTotal"), avg("maxViewCount"), avg("maxCatCnt"),
-      avg("maxTos"), avg("maxTor"), avg("avgTos"), avg("avgTor")).show(false)
+    val viewInfo = getViewInfo(sc, sqlContext, date)
+
     //pvFeature.filter($"label" === 1.0).groupBy("isMaxCat", "isMaxView").agg(count("guid")).show()
     //guidViewPaidList.show()
     //userFeature.filter($"label" === 1.0).show()
@@ -42,14 +40,18 @@ object FeatureCalculation {
    // println("Start time on site analysis!!")
 
     //time on site : muachung.vn -> (guid, count, avg(tos), avg(tor))
-    val tos = getTimeOnSiteFeature(sc, sqlContext, date)
+    //val tos = getTimeOnSiteFeature(sc, sqlContext, date)
     //tos.show()
 
-    val userFeature = pvFeature.join(tos, "guid")
+    //val userFeature = pvFeature.join(tos, "guid")
+    viewInfo.groupBy("label").agg(avg("countView"), avg("avgCountItemViewBeforePaid"),
+      avg("avgCountItemViewTotal"), avg("avgCountCatViewBeforePaid"),
+      avg("avgCountCatViewTotal"), avg("maxViewCount"), avg("maxCatCnt"),
+      avg("maxTos"), avg("maxTor"), avg("avgTos"), avg("avgTor")).show(false)
     //userFeature.show()
     /*println("get feature: Done !! date: " + date)
     timeMeasurent.getDistanceAndRestart()*/
-    return userFeature
+    return viewInfo
   }
 
 
@@ -60,13 +62,13 @@ object FeatureCalculation {
     //println("Start time on site analysis!! : " + tosPath)
 
     import sqlContext.implicits._
-    val tos = sc.textFile(tosPath).map(_.split("\t")).map(u => user(u(0), u(2), u(4).toInt, u(5).toInt))
+    val tos = sc.textFile(tosPath).map(_.split("\t")).map(u => user(u(0), u(2), u(3), u(4).toInt, u(5).toInt, u(6)))
       .toDF().filter($"domain".like(systemInfo.getString("domain"))).groupBy("guid").
       agg(max("tos").as("maxTos"),avg("tos").as("avgTos"),max("tor").as("maxTor"), avg("tor").as("avgTor"))
     return tos
   }
 
-  def getPageViewUserFeature(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame={
+  def getViewInfo(sc: SparkContext, sqlContext: SQLContext, date:String): DataFrame={
     import sqlContext.implicits._
     /*pageview data
     root
@@ -95,40 +97,48 @@ object FeatureCalculation {
  |-- utm_medium: string (nullable = true)
  |-- milis: long (nullable = true)
     * */
+    val tosDate = date.replaceAll("-", "")
+    val tosPath = systemInfo.getString("timeonsite_path").replace("yyyyMMdd", tosDate)
+
+    var viewInfo = sc.textFile(tosPath).map(_.split("\t")).map(u => user(u(0), u(2), u(3), u(4).toInt, u(5).toInt, u(6)))
+      .toDF().filter($"domain".like(systemInfo.getString("domain")))
+    val convertDatetimeToMiliseconds = udf(TimeUtils.stringToMilices(_: String))
+    viewInfo = viewInfo.withColumn("milis",convertDatetimeToMiliseconds($"dt"))
+
     //println("Start pv analysis!! : " + date)
-    val pageViewPath = systemInfo.getString("pageview_path").replace("yyyy-MM-dd", date)
-    var pageView = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
-      .select("guid", "path", "milis")
+    /*val pageViewPath = systemInfo.getString("pageview_path").replace("yyyy-MM-dd", date)
+    var viewInfo = sqlContext.read.load(pageViewPath).filter($"domain".like(systemInfo.getString("domain")))
+      .select("guid", "path", "milis")*/
 
     //split itemId from path
     //sqlContext.udf.register("getItemIdFromPath", getEditedIdFromPath(_: String))
     val getItemIdFromPath = udf(getEditedIdFromPath(_: String))
-    pageView = pageView.withColumn("itemId", getItemIdFromPath(pageView("path")) )
+    viewInfo = viewInfo.withColumn("itemId", getItemIdFromPath(viewInfo("path")) )
 
     //group by guid, agg count, idList sort by time(milis)
-    pageView = pageView.groupBy("guid").agg(count("itemId").as("countView"),
+    viewInfo = viewInfo.groupBy("guid").agg(count("itemId").as("countView"),
       GuidsIdMilisUDAF($"itemId", $"milis").as("idList"))
 
     //get paidList from idList
     val getPaidList = udf(getPaidListFromViewList(_ : WrappedArray[Int]))
-    pageView = pageView.withColumn("paidList", getPaidList($"idList"))
+    viewInfo = viewInfo.withColumn("paidList", getPaidList($"idList"))
 
     //Label : paid - 1, not-paid - 0
     val getLabelOfPaid = udf(getLabelPaidOrNot(_ : WrappedArray[Int]))
-    pageView = pageView.withColumn("label", getLabelOfPaid($"paidList"))
+    viewInfo = viewInfo.withColumn("label", getLabelOfPaid($"paidList"))
 
     // Item view before paid
     val getCountItemViewBeforePaidAverage = udf(countViewBeforePaidAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
-    pageView = pageView.withColumn("avgCountItemViewBeforePaid", getCountItemViewBeforePaidAverage($"paidList", $"idList" ))
+    viewInfo = viewInfo.withColumn("avgCountItemViewBeforePaid", getCountItemViewBeforePaidAverage($"paidList", $"idList" ))
 
     //item view all
     val getCountItemViewTotalAverage = udf(countViewTotalAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
-    pageView = pageView.withColumn("avgCountItemViewTotal", getCountItemViewTotalAverage($"paidList", $"idList" ))
+    viewInfo = viewInfo.withColumn("avgCountItemViewTotal", getCountItemViewTotalAverage($"paidList", $"idList" ))
 
     //category view before paid and all
     val getCountCatViewBeforePaidAverage = udf(countCategoryBeforePaidAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
     val getCountCatViewTotalAverage = udf(countCategoryTotalAverage(_ : WrappedArray[Int],_ : WrappedArray[Int]))
-    pageView = pageView.withColumn("avgCountCatViewBeforePaid", getCountCatViewBeforePaidAverage($"paidList", $"idList" ))
+    viewInfo = viewInfo.withColumn("avgCountCatViewBeforePaid", getCountCatViewBeforePaidAverage($"paidList", $"idList" ))
       .withColumn("avgCountCatViewTotal", getCountCatViewTotalAverage($"paidList", $"idList" ))
 
     //max view count
@@ -136,11 +146,11 @@ object FeatureCalculation {
     val getMaxCatCount = udf(maxCategoryCount(_ : WrappedArray[Int]))
     val getIsMaxView = udf(isPaidMaxView(_ : WrappedArray[Int], _ : WrappedArray[Int]))
     val getIsMaxCat = udf(isPaidMaxCategoryView(_ : WrappedArray[Int], _ : WrappedArray[Int]))
-    pageView = pageView.withColumn("maxViewCount",getMaxViewCount($"idList")).
+    viewInfo = viewInfo.withColumn("maxViewCount",getMaxViewCount($"idList")).
       withColumn("maxCatCnt", getMaxCatCount($"idList")).
       withColumn("isMaxView", getIsMaxView($"paidList", $"idList")).
       withColumn("isMaxCat", getIsMaxCat($"paidList", $"idList"))
 
-    return pageView
+    return viewInfo
   }
 }

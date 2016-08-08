@@ -3,7 +3,7 @@ package vn.vccorp.adtech.bigdata.userbehavior.machineLearning
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler, VectorIndexer}
 import org.apache.spark.sql.{DataFrame, SQLContext}
-import org.apache.spark.ml.classification.{DecisionTreeClassifier, LogisticRegression, NaiveBayes, RandomForestClassifier}
+import org.apache.spark.ml.classification._
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 //import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
@@ -31,7 +31,8 @@ object Classification {
       .setOutputCol("features")
 
     //Logistic Regression
-    val lr = new LogisticRegression().setMaxIter(20).setRegParam(0.05).setThreshold(0.55).setPredictionCol("predictedLabel")
+    val lr = new LogisticRegression().setMaxIter(20).setRegParam(0.05).setThreshold(0.55).
+      setPredictionCol("predictedLabel")
 
     //Pipeline
     val pipeline = new Pipeline().setStages(Array(assembler,lr))
@@ -144,9 +145,30 @@ object Classification {
     val accuracy = predictionData.agg( AccuracyCalculation(predictionData("predictedLabel"),
       predictionData("label") ).as("accuracy"))
     accuracy.show(false)
+  }
 
-
-
+  def runMultilayerPerceptronClassifier(sc: SparkContext, sqlContext: SQLContext, trainData: DataFrame,
+                                        testData: DataFrame): Unit ={
+    // specify layers for the neural network:
+    // input layer of size 4 (features), two intermediate of size 5 and 4
+    // and output of size 3 (classes)
+    val assembler = new VectorAssembler()
+      .setInputCols(Array("countView", "maxTos", "maxTor",  "avgTos", "avgTor" ,
+        "maxViewCount", "maxCatCnt"))
+      .setOutputCol("features")
+    val layers = Array[Int](7, 5, 4, 2)
+    // create the trainer and set its parameters
+    val trainer = new MultilayerPerceptronClassifier()
+      .setLayers(layers)
+      .setBlockSize(128)
+      .setSeed(1234L)
+      .setMaxIter(100)
+    // train the model
+    val model = trainer.fit(trainData)
+    // compute accuracy on the test set
+    val predictionData = model.transform(testData)
+    val accuracy = predictionData.select("prediction", "label").agg(AccuracyCalculation(predictionData("prediction"),
+      predictionData("label") ).as("accuracy"))
   }
 
   def runNaiveBayes(sc: SparkContext, sqlContext: SQLContext, trainData: DataFrame,

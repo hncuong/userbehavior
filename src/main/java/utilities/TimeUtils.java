@@ -24,13 +24,24 @@ public class TimeUtils {
         }
         return 0;
     }
+    public static long stringToMilices(String time){
+        return stringToMilices(time, FFDATE_TIME_1);
+    }
+
 
     public static long stringToSecond(String time, String format) {
         return stringToMilices(time, format) / 1000;
     }
+    public static long stringToSecond(String time) {
+        return stringToMilices(time) / 1000;
+    }
+
 
     public static long stringToMinute(String time, String format){
         return stringToMilices(time, format) / 1000 / 60;
+    }
+    public static long stringToMinute(String time){
+        return stringToMilices(time) / 1000 / 60;
     }
 
     public static void printSystemCurrentTime(){
